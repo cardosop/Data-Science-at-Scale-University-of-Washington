@@ -1,0 +1,101 @@
+---
+title: "Crime Visualisation of San Francisco - Analytics Report"
+author: "Paulo Cardoso"
+date: "March 06, 2016"
+output: pdf_document
+---
+
+# Overview
+
+This is an investitigation that will be an Exploratory Data Analysis focused on Visualisations. The object The subject of this analysis are the incidents of crimes in the summer of 2014 on Seattle and San Francisco. The data set used was provided by Cousera and is available on: (https://github.com/uwescience/datasci_course_materials/blob/master/assignment6/sanfrancisco_incidents_summer_2014.csv)
+
+This report has for objective to answer the following questions:
+
+I) What is the time when most incidents occur?
+
+II) How frequently incidents occur?
+
+III) What is the distribution of the 5 most important occurrences by day of the week?
+
+IV) What is the distribtion of incidents by district?
+
+# Set up
+
+Loading the external libraries and the data.
+```{r echo=TRUE, cache=TRUE}
+# Loading Libraries
+library(ggplot2)
+library(scales)
+library(ggmap)
+
+# Loading Data
+dSanF <- read.csv(file = "sanfrancisco_incidents_summer_2014.csv", stringsAsFactors = FALSE)
+ 
+# Cleaning Data
+dSanF$Category <- factor(dSanF$Category)
+dSanF$DayOfWeek <- factor(dSanF$DayOfWeek)
+dSanF$Date <- as.Date(dSanF$Date, "%m/%d/%Y")
+dSanF$Time <- as.POSIXct(dSanF$Time, format="%H:%M") 
+dSanF$hour <- as.POSIXlt(dSanF$Time)$hour
+
+dSanF$Category <- 
+  factor(dSanF$Category, levels(dSanF$Category)[order(summary(dSanF$Category), decreasing = T)])
+
+dSanF$DayOfWeek <- factor(dSanF$DayOfWeek, c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"))
+``` 
+
+# Exploratory Data Analyses
+
+I) What is the time when most incidents occur?
+
+R.: As can be observed below, the time of day with the highest incidence of crimes is between 6:00 and 7:59 pm. With almost 2,000 incidents per hour.On the other hand the safest time of day is between 4:00 and 7:59 am, with less than 500 occurrences recorded per hour.
+
+```{r echo=TRUE, cache=TRUE}
+ggplot(data=dSanF, aes(dSanF$hour)) + 
+  geom_histogram(breaks=seq(0, 24, by = 1), alpha = 0.8, col="red", aes(fill=..count..)) + scale_fill_gradient("Count", low = "green", high = "red")+   labs(title="Number of Incidents vs Time") + labs(x="Hours", y="Number of Incidents")
+``` 
+
+II) How frequently incidents occur?
+
+R.:The frequency of the 11 main incidents can be seen below. As we can see the huge amount of larceny by registering a number of occurrences of almost 9500 cases. Amount that is more than 2.5 times the amount of the second type of crime more occurrences.
+
+```{r echo=TRUE, cache=TRUE}
+dataP2 <- subset(dSanF, Category %in% names(head(sort(summary(dSanF$Category), decreasing = T),  sum((cumsum(as.vector(sort(table(dSanF$Category), decreasing = T))) / nrow(dSanF)) < .96))))
+
+p2 <- ggplot(dataP2, aes(x=Category, fill=Category)) + geom_bar(stat="count") +     scale_y_continuous(breaks = seq(from=0, to=9500, by=500))
+p2
+```
+
+III) What is the distribution of the 5 most important occurrences by day of the week?
+
+The graph below shows the distribution of the 5 most important occurrences per day of the week. Also it is observed that the crimes of aggression, vehicle theft, drug / narcotic and robbery has virtually stable trends during the week. On the other hand Lacerny / theft is stable from Monday to Thursday, rising on Friday and reaching its highest point during the weekend.
+
+```{r echo=TRUE, cache=TRUE}
+setCrimes <- subset( dSanF, dSanF$Category %in% levels(dSanF$Category)[c(1, 4, 5, 7, 12)])
+
+dataP3 <- aggregate(setCrimes$Category, by=list(Category=setCrimes$Category, Day=setCrimes$DayOfWeek), length)
+names(dataP3)[3] <- "Occurrences"
+
+ggplot(dataP3, aes(x=Day, y=Occurrences, fill=Category)) + geom_bar(stat="identity") + facet_wrap(~Category)
+``` 
+
+IV) What is the distribtion of incidents by district?
+
+The map below shows the incidence of crime occurrences in areas of the city. And as can be seen the highest incidence of crimes is in the northeast of the city of San Francisco.
+
+```{r echo=TRUE, cache=TRUE}
+map <- get_map(location = 'San francisco', zoom = 12)
+ggmap(map) + geom_point(aes(x = X, y = Y, color='red'), data = dSanF, alpha = .1) + theme(legend.position="none")
+``` 
+
+# Conclusion
+
+What can be concluded based on the analysis conducted above is:
+
+- The region northeast of the city is the region with the highest incidence of reported criminal occurrences, so it is the most insecure area of the city. 
+
+- The preferred time by outlaw is from 6:00 to 7:59 pm. Time that they occur most amounts of crime, so is the period the more uncertain day. Already the safest day period is from 4:00 to 7:59 am.
+
+- The type of crime most committed in the city of San Francisco is the crime of larceny, with almost 9500 cases in the summer of 2014. The number of larceny cases is so big that it is 2.5 times greater than the second.
+
+- The cases of larceny increase on weekends.
